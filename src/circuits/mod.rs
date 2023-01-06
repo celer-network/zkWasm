@@ -14,6 +14,10 @@ use crate::{
         utils::Context,
     },
     foreign::{
+        ecc_helper::{
+            circuits::{assign::EccHelperTableChip, EccHelperTableConfig},
+            ECC_FOREIGN_TABLE_KEY,
+        },
         sha256_helper::{
             circuits::{assign::Sha256HelperTableChip, Sha256HelperTableConfig},
             SHA256_FOREIGN_TABLE_KEY,
@@ -79,6 +83,7 @@ pub struct TestCircuitConfig<F: FieldExt> {
     brtable: BrTableConfig<F>,
     wasm_input_helper_table: WasmInputHelperTableConfig<F>,
     sha256_helper_table: Sha256HelperTableConfig<F>,
+    ecc_helper_table: EccHelperTableConfig<F>,
 }
 
 #[derive(Default, Clone)]
@@ -165,6 +170,7 @@ impl<F: FieldExt> Circuit<F> for TestCircuit<F> {
 
         let wasm_input_helper_table = WasmInputHelperTableConfig::configure(meta, &rtable);
         let sha256_helper_table = Sha256HelperTableConfig::configure(meta, &rtable);
+        let ecc_helper_table = EccHelperTableConfig::configure(meta, &rtable);
 
         let mut foreign_tables = BTreeMap::<&'static str, Box<dyn ForeignTableConfig<_>>>::new();
         foreign_tables.insert(
@@ -175,6 +181,7 @@ impl<F: FieldExt> Circuit<F> for TestCircuit<F> {
             SHA256_FOREIGN_TABLE_KEY,
             Box::new(sha256_helper_table.clone()),
         );
+        foreign_tables.insert(ECC_FOREIGN_TABLE_KEY, Box::new(ecc_helper_table.clone()));
 
         let etable = EventTableConfig::configure(
             meta,
@@ -198,6 +205,7 @@ impl<F: FieldExt> Circuit<F> for TestCircuit<F> {
             brtable,
             wasm_input_helper_table,
             sha256_helper_table,
+            ecc_helper_table,
         }
     }
 
@@ -215,10 +223,12 @@ impl<F: FieldExt> Circuit<F> for TestCircuit<F> {
         let brchip = BrTableChip::new(config.brtable);
         let wasm_input_chip = WasmInputHelperTableChip::new(config.wasm_input_helper_table);
         let sha256chip = Sha256HelperTableChip::new(config.sha256_helper_table);
+        let ecc_chip = EccHelperTableChip::new(config.ecc_helper_table);
 
         rchip.init(&mut layouter)?;
         wasm_input_chip.init(&mut layouter)?;
         sha256chip.init(&mut layouter)?;
+        ecc_chip.init(&mut layouter)?;
 
         sha256chip.assign(
             &mut layouter,
@@ -233,6 +243,13 @@ impl<F: FieldExt> Circuit<F> for TestCircuit<F> {
                 .execution_tables
                 .etable
                 .filter_foreign_entries(HostPlugin::HostInput),
+        )?;
+        ecc_chip.assign(
+            &mut layouter,
+            &self
+                .execution_tables
+                .etable
+                .filter_foreign_entries(HostPlugin::Ecc),
         )?;
 
         ichip.assign(&mut layouter, &self.compile_tables.itable)?;

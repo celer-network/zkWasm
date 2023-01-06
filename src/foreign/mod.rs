@@ -7,9 +7,10 @@ use crate::circuits::etable_compact::op_configure::{
     ConstraintBuilder, EventTableCellAllocator, EventTableOpcodeConfig,
 };
 
+pub mod ecc_helper;
 pub mod keccak_helper;
-pub mod sha256_helper;
 pub mod require_helper;
+pub mod sha256_helper;
 pub mod wasm_input_helper;
 
 pub trait ForeignCallInfo {
